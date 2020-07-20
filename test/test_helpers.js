@@ -6,12 +6,21 @@ var https = require('https');
 var path = require('path');
 var fs = require('fs');
 var express = require('express');
+var compression = require('compression');
 var bodyParser = require('body-parser');
 var getPort = require('get-port');
 var util = require('util');
 var URLSearchParams = require('url').URLSearchParams;
 
 var FAKE_CREATED_TIME = '2020-04-20T16:20:00.000Z';
+
+function shouldCompress(req, res) {
+    if (req.query.has('compress')) {
+        return compression.filter(req, res);
+    }
+
+    return false;
+}
 
 function getMockEnvironmentAsync(options) {
     options = options || {};
@@ -22,6 +31,8 @@ function getMockEnvironmentAsync(options) {
     app.set('query parser', string => new URLSearchParams(string));
 
     app.use(bodyParser.json());
+
+    app.use(compression({filter: shouldCompress, threshold: 0}));
 
     app.use(function(req, res, next) {
         req.app.set('most recent request', req);

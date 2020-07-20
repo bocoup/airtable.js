@@ -539,6 +539,21 @@ describe('Base', function() {
             });
         });
 
+        it('handles gzipped requests with the right options', function(done) {
+            testExpressApp.set('handler override', function(req, res) {
+                res.json({
+                    fizz: 'buzz',
+                });
+            });
+
+            fakeBase.runAction('get', '/gzip-test', {compress: true}, null, function(err, res, body) {
+                expect(err).toBeNull();
+                console.log("BODY", body);
+                expect(body.fizz).toBe('buzz');
+                done();
+            });
+        });
+
         it('makes requests GET requests with empty bodies', function(done) {
             expect(version).toEqual(expect.stringMatching(/^\d+\.\d+\.\d+$/));
 
