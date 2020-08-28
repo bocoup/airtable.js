@@ -9,7 +9,7 @@
     "coverage": "jest --env node --coverage --no-cache",
     "pretest": "npm run lint && npm run prepare; true",
     "lint": "eslint '*/**/*.{js,ts,tsx}'",
-    "format": "prettier --write '**/*.js'",
+    "format": "prettier --write '**/*.{js,ts}'",
     "test": "npm run coverage",
     "test-unit": "jest --env node",
     "prepare": "rm -rf lib/* && tsc",
@@ -19,7 +19,7 @@
     "@types/node": "^14.0.14",
     "abort-controller": "^3.0.0",
     "abortcontroller-polyfill": "^1.4.0",
-    "lodash": "4.17.15",
+    "lodash.clone": "^4.5.0",
     "node-fetch": "^2.6.0"
   },
   "main": "./lib/airtable.js",

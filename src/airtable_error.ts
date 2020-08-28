@@ -1,22 +1,16 @@
-class AirtableError {
+class AirtableError extends Error {
     error: string;
-    message: string;
     statusCode: number;
 
     constructor(error: string, message: string, statusCode: number) {
+        super(message);
         this.error = error;
-        this.message = message;
         this.statusCode = statusCode;
     }
 
     toString() {
-        return [
-            this.message,
-            '(',
-            this.error,
-            ')',
-            this.statusCode ? `[Http code ${this.statusCode}]` : '',
-        ].join('');
+        const statusCodeFormatted = this.statusCode ? `[Http code ${this.statusCode}]` : '';
+        return `${this.message}(${this.error})${statusCodeFormatted}`;
     }
 }
 
