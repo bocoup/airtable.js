@@ -1,14 +1,11 @@
-import isArray from 'lodash/isArray';
-import isPlainObject from 'lodash/isPlainObject';
-import assign from 'lodash/assign';
-import forEach from 'lodash/forEach';
-import map from 'lodash/map';
 import deprecate from './deprecate';
 import Query from './query';
 import {QueryParams} from './query_params';
 import Record from './record';
 import callbackToPromise from './callback_to_promise';
 import Base from './base';
+import {AirtableRequestOptions} from './airtable_request_options';
+import {isPlainObject} from './is_plain_object';
 
 type OptionalParameters = {[key: string]: any};
 
@@ -118,7 +115,7 @@ class Table {
             const validationResults = Query.validateParams(params);
 
             if (validationResults.errors.length) {
-                const formattedErrors = map(validationResults.errors, error => {
+                const formattedErrors = validationResults.errors.map(error => {
                     return `  * ${error}`;
                 });
 
@@ -160,7 +157,7 @@ class Table {
         done: RecordCollectionCallback
     ): void;
     _createRecords(recordsData, optionalParameters, done?) {
-        const isCreatingMultipleRecords = isArray(recordsData);
+        const isCreatingMultipleRecords = Array.isArray(recordsData);
 
         if (!done) {
             done = optionalParameters;
@@ -172,7 +169,7 @@ class Table {
         } else {
             requestData = {fields: recordsData};
         }
-        assign(requestData, optionalParameters);
+        Object.assign(requestData, optionalParameters);
         this._base.runAction(
             'post',
             `/${this._urlEncodedNameOrId()}/`,
@@ -230,13 +227,13 @@ class Table {
     ) {
         let opts;
 
-        if (isArray(recordsDataOrRecordId)) {
+        if (Array.isArray(recordsDataOrRecordId)) {
             const recordsData = recordsDataOrRecordId;
             opts = isPlainObject(recordDataOrOptsOrDone) ? recordDataOrOptsOrDone : {};
             done = optsOrDone || recordDataOrOptsOrDone;
 
             const method = isDestructiveUpdate ? 'put' : 'patch';
-            const requestData = assign({records: recordsData}, opts);
+            const requestData = {records: recordsData, ...opts};
             this._base.runAction(
                 method,
                 `/${this._urlEncodedNameOrId()}/`,
@@ -272,7 +269,7 @@ class Table {
     _destroyRecord(recordId: string, done: RecordCallback): void;
     _destroyRecord(recordIds: string[], done: RecordCollectionCallback): void;
     _destroyRecord(recordIdsOrId, done) {
-        if (isArray(recordIdsOrId)) {
+        if (Array.isArray(recordIdsOrId)) {
             const queryParams = {records: recordIdsOrId};
             this._base.runAction(
                 'delete',
@@ -285,7 +282,7 @@ class Table {
                         return;
                     }
 
-                    const records = map(results.records, ({id}) => {
+                    const records = results.records.map(({id}) => {
                         return new Record(this, id, null);
                     });
                     done(null, records);
@@ -302,13 +299,11 @@ class Table {
             done = opts;
             opts = {};
         }
-        const listRecordsParameters = assign(
-            {
-                limit,
-                offset,
-            },
-            opts
-        );
+        const listRecordsParameters = {
+            limit,
+            offset,
+            ...opts,
+        };
 
         this._base.runAction(
             'get',
@@ -321,7 +316,7 @@ class Table {
                     return;
                 }
 
-                const records = map(results.records, recordJson => {
+                const records = results.records.map(recordJson => {
                     return new Record(this, null, recordJson);
                 });
                 done(null, records, results.offset);
@@ -345,7 +340,7 @@ class Table {
                     return;
                 }
 
-                forEach(page, callback);
+                page.forEach(callback);
 
                 if (newOffset) {
                     offset = newOffset;

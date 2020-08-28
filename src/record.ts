@@ -1,4 +1,3 @@
-import assign from 'lodash/assign';
 import callbackToPromise from './callback_to_promise';
 import Table from './table';
 
@@ -76,12 +75,10 @@ function patchUpdate(this: Record, cellValuesByName, opts, done?: RecordCallback
         done = opts;
         opts = {};
     }
-    const updateBody = assign(
-        {
-            fields: cellValuesByName,
-        },
-        opts
-    );
+    const updateBody = {
+        fields: cellValuesByName,
+        ...opts,
+    };
 
     this._table._base.runAction(
         'patch',
@@ -105,12 +102,10 @@ function putUpdate(this: Record, cellValuesByName, opts, done?: RecordCallback) 
         done = opts;
         opts = {};
     }
-    const updateBody = assign(
-        {
-            fields: cellValuesByName,
-        },
-        opts
-    );
+    const updateBody = {
+        fields: cellValuesByName,
+        ...opts,
+    };
     this._table._base.runAction(
         'put',
         `/${this._table._urlEncodedNameOrId()}/${this.id}`,

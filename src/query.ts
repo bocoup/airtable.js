@@ -1,17 +1,14 @@
-import isFunction from 'lodash/isFunction';
-import clone from 'lodash/clone';
-import forEach from 'lodash/forEach';
-import map from 'lodash/map';
-import keys from 'lodash/keys';
+import clone from 'lodash.clone';
 import Record from './record';
 import callbackToPromise from './callback_to_promise';
 import has from './has';
 import Table from './table';
 import {paramValidators, QueryParams} from './query_params';
+import {isFunction} from './is_function';
 
 type PageCallback = (records: Record[], processNextPage: () => void) => void;
 type RecordCollectionCallback = (error: any, records?: Record[]) => void;
-type DoneCallback = (error: any) => void;
+type DoneCallback = (error: any, value?: null) => void;
 
 interface RecordCollectionRequestMethod {
     (): Promise<Record[]>;
@@ -64,7 +61,7 @@ class Query {
         const ignoredKeys = [];
         const errors = [];
 
-        forEach(keys(params), key => {
+        for (const key in params) {
             const value = params[key];
             if (has(Query.paramValidators, key)) {
                 const validator = Query.paramValidators[key];
@@ -77,7 +74,7 @@ class Query {
             } else {
                 ignoredKeys.push(key);
             }
-        });
+        }
 
         return {
             validParams,
@@ -143,7 +140,7 @@ function eachPage(this: Query, pageCallback: PageCallback, done: DoneCallback) {
                     };
                 }
 
-                const records = map(result.records, recordJson => {
+                const records = result.records.map(recordJson => {
                     return new Record(this._table, null, recordJson);
                 });
 

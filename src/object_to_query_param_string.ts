@@ -1,13 +1,9 @@
-import isArray from 'lodash/isArray';
-import forEach from 'lodash/forEach';
-import isNil from 'lodash/isNil';
-
 // Adapted from jQuery.param:
 // https://github.com/jquery/jquery/blob/2.2-stable/src/serialize.js
 function buildParams(prefix, obj, addFn) {
-    if (isArray(obj)) {
+    if (Array.isArray(obj)) {
         // Serialize array item.
-        forEach(obj, (value, index) => {
+        obj.forEach((value, index) => {
             if (/\[\]$/.test(prefix)) {
                 // Treat each array item as a scalar.
                 addFn(prefix, value);
@@ -22,9 +18,10 @@ function buildParams(prefix, obj, addFn) {
         });
     } else if (typeof obj === 'object') {
         // Serialize object item.
-        forEach(obj, (value, key) => {
+        for (const key in obj) {
+            const value = obj[key];
             buildParams(`${prefix}[${key}]`, value, addFn);
-        });
+        }
     } else {
         // Serialize scalar item.
         addFn(prefix, obj);
@@ -34,13 +31,14 @@ function buildParams(prefix, obj, addFn) {
 function objectToQueryParamString(obj) {
     const parts = [];
     const addFn = (key, value) => {
-        value = isNil(value) ? '' : value;
+        value = value === null || value === void 0 ? '' : value;
         parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
     };
 
-    forEach(obj, (value, key) => {
+    for (const key in obj) {
+        const value = obj[key];
         buildParams(key, value, addFn);
-    });
+    }
 
     return parts.join('&').replace(/%20/g, '+');
 }

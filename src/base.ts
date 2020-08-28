@@ -1,7 +1,3 @@
-import forEach from 'lodash/forEach';
-import get from 'lodash/get';
-import assign from 'lodash/assign';
-import isPlainObject from 'lodash/isPlainObject';
 import fetch from './fetch';
 import AbortController from './abort-controller';
 import objectToQueryParamString from './object_to_query_param_string';
@@ -12,6 +8,7 @@ import runAction from './run_action';
 import packageVersion from './package_version';
 import exponentialBackoffWithJitter from './exponential_backoff_with_jitter';
 import type Airtable from './airtable';
+import {isPlainObject} from './is_plain_object';
 
 const userAgent = `Airtable.js/${packageVersion}`;
 
@@ -40,17 +37,17 @@ class Base {
     makeRequest(options: BaseRequestOptions) {
         options = options || {};
 
-        const method = get(options, 'method', 'GET').toUpperCase();
+        const method = (options.method ?? 'GET').toUpperCase();
 
         const url = `${this._airtable._endpointUrl}/v${this._airtable._apiVersionMajor}/${
             this._id
-        }${get(options, 'path', '/')}?${objectToQueryParamString(get(options, 'qs', {}))}`;
+        }${options.path ?? '/'}?${objectToQueryParamString(options.qs ?? {})}`;
 
         const controller = new AbortController();
 
         const requestOptions: RequestInit = {
             method,
-            headers: this._getRequestHeaders(get(options, 'headers', {})),
+            headers: this._getRequestHeaders(options.headers ?? {}),
             signal: controller.signal,
         };
 
@@ -68,12 +65,13 @@ class Base {
                     clearTimeout(timeout);
                     resp.statusCode = resp.status;
                     if (resp.status === 429 && !this._airtable._noRetryIfRateLimited) {
-                        const numAttempts = get(options, '_numAttempts', 0);
+                        const numAttempts = options._numAttempts ?? 0;
                         const backoffDelayMs = exponentialBackoffWithJitter(numAttempts);
                         setTimeout(() => {
-                            const newOptions = assign({}, options, {
+                            const newOptions = {
+                                ...options,
                                 _numAttempts: numAttempts + 1,
-                            });
+                            };
                             this.makeRequest(newOptions)
                                 .then(resolve)
                                 .catch(reject);
@@ -122,9 +120,9 @@ class Base {
         result.set('Authorization', `Bearer ${this._airtable._apiKey}`);
         result.set('User-Agent', userAgent);
         result.set('Content-Type', 'application/json');
-        forEach(headers, (headerValue, headerKey) => {
-            result.set(headerKey, headerValue);
-        });
+        for (const headerKey in headers) {
+            result.set(headerKey, headers[headerKey]);
+        }
 
         return result.toJSON();
     }
@@ -210,11 +208,12 @@ class Base {
         const baseFn = tableName => {
             return base.doCall(tableName);
         };
-        forEach(['table', 'makeRequest', 'runAction', 'getId'], baseMethod => {
-            baseFn[baseMethod] = base[baseMethod].bind(base);
-        });
         baseFn._base = base;
         baseFn.tables = base['tables'];
+        baseFn.table = base.table.bind(base) as Base['table'];
+        baseFn.makeRequest = base.makeRequest.bind(base) as Base['makeRequest'];
+        baseFn.runAction = base.runAction.bind(base) as Base['runAction'];
+        baseFn.getId = base.getId.bind(base) as Base['getId'];
         return baseFn;
     }
 }
