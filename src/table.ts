@@ -1,14 +1,11 @@
-import isArray from 'lodash/isArray';
 import isPlainObject from 'lodash/isPlainObject';
-import assign from 'lodash/assign';
-import forEach from 'lodash/forEach';
-import map from 'lodash/map';
 import deprecate from './deprecate';
 import Query from './query';
 import {QueryParams} from './query_params';
 import Record from './record';
 import callbackToPromise from './callback_to_promise';
 import Base from './base';
+import {AirtableRequestOptions} from './airtable_request_options';
 
 type OptionalParameters = {[key: string]: any};
 
@@ -21,23 +18,27 @@ interface TableFindRecord {
 }
 
 interface TableCreateRecords {
-    (recordsData: any[], optionalParameters?: OptionalParameters): Promise<Record[]>;
+    (recordsData: any[]): Promise<Record[]>;
+    (recordsData: any[], optionalParameters: OptionalParameters): Promise<Record[]>;
     (
         recordsData: any[],
         optionalParameters: OptionalParameters,
         done: RecordCollectionCallback
     ): void;
     (recordsData: any[], done: RecordCollectionCallback): void;
-    (recordData: any, optionalParameters?: OptionalParameters): Promise<Record>;
+    (recordData: any): Promise<Record>;
+    (recordData: any, optionalParameters: OptionalParameters): Promise<Record>;
     (recordData: any, optionalParameters: OptionalParameters, done: RecordCallback): void;
     (recordData: any, done: RecordCallback): void;
 }
 
 interface TableChangeRecords {
-    (recordId: string, recordData: any, opts?: OptionalParameters): Promise<Record>;
+    (recordId: string, recordData: any): Promise<Record>;
+    (recordId: string, recordData: any, opts: OptionalParameters): Promise<Record>;
     (recordId: string, recordData: any, opts: OptionalParameters, done: RecordCallback): void;
     (recordId: string, recordData: any, done: RecordCallback): void;
-    (recordsData: any[], opts?: OptionalParameters): Promise<Record[]>;
+    (recordsData: any[]): Promise<Record[]>;
+    (recordsData: any[], opts: OptionalParameters): Promise<Record[]>;
     (recordsData: any[], opts: OptionalParameters, done: RecordCollectionCallback): void;
     (recordsData: any[], done: RecordCollectionCallback): void;
 }
@@ -49,7 +50,7 @@ interface TableDestroyRecords {
 }
 
 class Table {
-    readonly _base: Base;
+    private readonly _base: Base;
 
     readonly id: string;
     readonly name: string;
@@ -98,12 +99,33 @@ class Table {
         );
     }
 
-    _findRecordById(recordId: string, done: RecordCallback) {
+    makeRequest(options: AirtableRequestOptions) {
+        const path = options?.path ?? '/';
+        return this._base.makeRequest({
+            ...options,
+            path: `/${this._urlEncodedNameOrId()}${path}`,
+        });
+    }
+
+    /**
+     * @deprecated This function is deprecated.
+     */
+    runAction(...[method, path, queryParams, bodyData, callback]: Parameters<Base['runAction']>) {
+        this._base.runAction(
+            method,
+            `/${this._urlEncodedNameOrId()}${path}`,
+            queryParams,
+            bodyData,
+            callback
+        );
+    }
+
+    private _findRecordById(recordId: string, done: RecordCallback) {
         const record = new Record(this, recordId);
         record.fetch(done);
     }
 
-    _selectRecords(params?: QueryParams): Query {
+    private _selectRecords(params?: QueryParams): Query {
         if (params === void 0) {
             params = {};
         }
@@ -118,7 +140,7 @@ class Table {
             const validationResults = Query.validateParams(params);
 
             if (validationResults.errors.length) {
-                const formattedErrors = map(validationResults.errors, error => {
+                const formattedErrors = validationResults.errors.map(error => {
                     return `  * ${error}`;
                 });
 
@@ -143,24 +165,24 @@ class Table {
         }
     }
 
-    _urlEncodedNameOrId(): string {
+    private _urlEncodedNameOrId(): string {
         return this.id || encodeURIComponent(this.name);
     }
 
-    _createRecords(recordData: any, done: RecordCallback): void;
-    _createRecords(
+    private _createRecords(recordData: any, done: RecordCallback): void;
+    private _createRecords(
         recordData: any,
         optionalParameters: OptionalParameters,
         done: RecordCallback
     ): void;
-    _createRecords(recordsData: any[], done: RecordCollectionCallback): void;
-    _createRecords(
+    private _createRecords(recordsData: any[], done: RecordCollectionCallback): void;
+    private _createRecords(
         recordsData: any[],
         optionalParameters: OptionalParameters,
         done: RecordCollectionCallback
     ): void;
-    _createRecords(recordsData, optionalParameters, done?) {
-        const isCreatingMultipleRecords = isArray(recordsData);
+    private _createRecords(recordsData, optionalParameters, done?) {
+        const isCreatingMultipleRecords = Array.isArray(recordsData);
 
         if (!done) {
             done = optionalParameters;
@@ -172,56 +194,50 @@ class Table {
         } else {
             requestData = {fields: recordsData};
         }
-        assign(requestData, optionalParameters);
-        this._base.runAction(
-            'post',
-            `/${this._urlEncodedNameOrId()}/`,
-            {},
-            requestData,
-            (err, resp, body) => {
-                if (err) {
-                    done(err);
-                    return;
-                }
-
-                let result;
-                if (isCreatingMultipleRecords) {
-                    result = body.records.map(record => {
-                        return new Record(this, record.id, record);
-                    });
-                } else {
-                    result = new Record(this, body.id, body);
-                }
-                done(null, result);
+        Object.assign(requestData, optionalParameters);
+        this.runAction('post', '', {}, requestData, (err, resp, body) => {
+            if (err) {
+                done(err);
+                return;
             }
-        );
+
+            let result;
+            if (isCreatingMultipleRecords) {
+                result = body.records.map(record => {
+                    return new Record(this, record.id, record);
+                });
+            } else {
+                result = new Record(this, body.id, body);
+            }
+            done(null, result);
+        });
     }
 
-    _updateRecords(
+    private _updateRecords(
         isDestructiveUpdate: boolean,
         recordId: string,
         recordData: any,
         done: RecordCallback
     ): void;
-    _updateRecords(
+    private _updateRecords(
         isDestructiveUpdate: boolean,
         recordId: string,
         recordData: any,
         opts: OptionalParameters,
         done: RecordCallback
     ): void;
-    _updateRecords(
+    private _updateRecords(
         isDestructiveUpdate: boolean,
         recordsData: any[],
         done: RecordCollectionCallback
     ): void;
-    _updateRecords(
+    private _updateRecords(
         isDestructiveUpdate: boolean,
         recordsData: any[],
         opts: OptionalParameters,
         done: RecordCollectionCallback
     ): void;
-    _updateRecords(
+    private _updateRecords(
         isDestructiveUpdate: boolean,
         recordsDataOrRecordId,
         recordDataOrOptsOrDone,
@@ -230,30 +246,24 @@ class Table {
     ) {
         let opts;
 
-        if (isArray(recordsDataOrRecordId)) {
+        if (Array.isArray(recordsDataOrRecordId)) {
             const recordsData = recordsDataOrRecordId;
             opts = isPlainObject(recordDataOrOptsOrDone) ? recordDataOrOptsOrDone : {};
             done = optsOrDone || recordDataOrOptsOrDone;
 
             const method = isDestructiveUpdate ? 'put' : 'patch';
-            const requestData = assign({records: recordsData}, opts);
-            this._base.runAction(
-                method,
-                `/${this._urlEncodedNameOrId()}/`,
-                {},
-                requestData,
-                (err, resp, {records}) => {
-                    if (err) {
-                        done(err);
-                        return;
-                    }
-
-                    const result = records.map(record => {
-                        return new Record(this, record.id, record);
-                    });
-                    done(null, result);
+            const requestData = {records: recordsData, ...opts};
+            this.runAction(method, '', {}, requestData, (err, resp, {records}) => {
+                if (err) {
+                    done(err);
+                    return;
                 }
-            );
+
+                const result = records.map(record => {
+                    return new Record(this, record.id, record);
+                });
+                done(null, result);
+            });
         } else {
             const recordId = recordsDataOrRecordId;
             const recordData = recordDataOrOptsOrDone;
@@ -269,67 +279,53 @@ class Table {
         }
     }
 
-    _destroyRecord(recordId: string, done: RecordCallback): void;
-    _destroyRecord(recordIds: string[], done: RecordCollectionCallback): void;
-    _destroyRecord(recordIdsOrId, done) {
-        if (isArray(recordIdsOrId)) {
+    private _destroyRecord(recordId: string, done: RecordCallback): void;
+    private _destroyRecord(recordIds: string[], done: RecordCollectionCallback): void;
+    private _destroyRecord(recordIdsOrId, done) {
+        if (Array.isArray(recordIdsOrId)) {
             const queryParams = {records: recordIdsOrId};
-            this._base.runAction(
-                'delete',
-                `/${this._urlEncodedNameOrId()}`,
-                queryParams,
-                null,
-                (err, response, results) => {
-                    if (err) {
-                        done(err);
-                        return;
-                    }
-
-                    const records = map(results.records, ({id}) => {
-                        return new Record(this, id, null);
-                    });
-                    done(null, records);
+            this.runAction('delete', '', queryParams, null, (err, response, results) => {
+                if (err) {
+                    done(err);
+                    return;
                 }
-            );
+
+                const records = results.records.map(({id}) => {
+                    return new Record(this, id, null);
+                });
+                done(null, records);
+            });
         } else {
             const record = new Record(this, recordIdsOrId);
             record.destroy(done);
         }
     }
 
-    _listRecords(limit, offset, opts, done) {
+    private _listRecords(limit, offset, opts, done) {
         if (!done) {
             done = opts;
             opts = {};
         }
-        const listRecordsParameters = assign(
-            {
-                limit,
-                offset,
-            },
-            opts
-        );
+        const listRecordsParameters = {
+            limit,
+            offset,
+            ...opts,
+        };
 
-        this._base.runAction(
-            'get',
-            `/${this._urlEncodedNameOrId()}/`,
-            listRecordsParameters,
-            null,
-            (err, response, results) => {
-                if (err) {
-                    done(err);
-                    return;
-                }
-
-                const records = map(results.records, recordJson => {
-                    return new Record(this, null, recordJson);
-                });
-                done(null, records, results.offset);
+        this.runAction('get', '', listRecordsParameters, null, (err, response, results) => {
+            if (err) {
+                done(err);
+                return;
             }
-        );
+
+            const records = results.records.map(recordJson => {
+                return new Record(this, null, recordJson);
+            });
+            done(null, records, results.offset);
+        });
     }
 
-    _forEachRecord(opts, callback, done) {
+    private _forEachRecord(opts, callback, done) {
         if (arguments.length === 2) {
             done = callback;
             callback = opts;
@@ -345,7 +341,7 @@ class Table {
                     return;
                 }
 
-                forEach(page, callback);
+                page.forEach(callback);
 
                 if (newOffset) {
                     offset = newOffset;
