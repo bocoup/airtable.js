@@ -1,8 +1,8 @@
 import check from './typecheck';
-import isString from 'lodash/isString';
-import isNumber from 'lodash/isNumber';
-import isPlainObject from 'lodash/isPlainObject';
-import includes from 'lodash/includes';
+import {isString} from './is_string';
+import {isNumber} from './is_number';
+import {includes} from './includes';
+import {isPlainObject} from './is_plain_object';
 
 export const paramValidators = {
     fields: check(

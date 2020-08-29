@@ -1,5 +1,4 @@
-import includes from 'lodash/includes';
-import isArray from 'lodash/isArray';
+import {includes} from "./includes";
 
 function check<Value, Error>(fn: (value: any) => value is Value, error: Error) {
     return function(value: Value): {pass: true} | {pass: false; error: Error} {
@@ -17,7 +16,7 @@ check.isOneOf = function isOneOf(options) {
 
 check.isArrayOf = function<Value>(itemValidator: (value: any) => value is Value) {
     return function(value: any): value is Value[] {
-        return isArray(value) && value.every(itemValidator);
+        return Array.isArray(value) && value.every(itemValidator);
     };
 };
 

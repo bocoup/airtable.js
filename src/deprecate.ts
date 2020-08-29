@@ -17,7 +17,7 @@ function deprecate(fn, key, message) {
             didWarnForDeprecation[key] = true;
             console.warn(message);
         }
-        fn.apply(this, args);
+        fn.call(this, ...args);
     };
 }
 
