@@ -2,10 +2,10 @@ require=(function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c=
 "use strict";
 // istanbul ignore file
 var AbortController;
-if (typeof window === 'undefined') {
+if (typeof window === 'undefined' && typeof Request === 'undefined') {
     AbortController = require('abort-controller');
 }
-else if (typeof window.Request !== 'undefined' && 'signal' in new window.Request('')) {
+else if ('signal' in new Request('') && typeof window.AbortController !== 'undefined') {
     AbortController = window.AbortController;
 }
 else {
@@ -308,7 +308,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 var node_fetch_1 = __importDefault(require("node-fetch"));
 module.exports = (
 // istanbul ignore next
-typeof window === 'undefined' || typeof window.fetch === 'undefined' ? node_fetch_1.default : fetch);
+(typeof window === 'undefined' || typeof fetch === 'undefined') ? node_fetch_1.default : fetch);
 
 },{"node-fetch":20}],8:[function(require,module,exports){
 "use strict";
@@ -523,7 +523,7 @@ function eachPage(pageCallback, done) {
     var inner = function () {
         _this._table._base.runAction('get', path, params, null, function (err, response, result) {
             if (err) {
-                done(err);
+                done(err, null);
             }
             else {
                 var next = void 0;
@@ -558,7 +558,7 @@ function all(done) {
         fetchNextPage();
     }, function (err) {
         if (err) {
-            done(err);
+            done(err, null);
         }
         else {
             done(null, allRecords);
@@ -1067,19 +1067,6 @@ function _setPrototypeOf(o, p) {
   return _setPrototypeOf(o, p);
 }
 
-function _isNativeReflectConstruct() {
-  if (typeof Reflect === "undefined" || !Reflect.construct) return false;
-  if (Reflect.construct.sham) return false;
-  if (typeof Proxy === "function") return true;
-
-  try {
-    Date.prototype.toString.call(Reflect.construct(Date, [], function () {}));
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
 function _assertThisInitialized(self) {
   if (self === void 0) {
     throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
@@ -1094,25 +1081,6 @@ function _possibleConstructorReturn(self, call) {
   }
 
   return _assertThisInitialized(self);
-}
-
-function _createSuper(Derived) {
-  var hasNativeReflectConstruct = _isNativeReflectConstruct();
-
-  return function _createSuperInternal() {
-    var Super = _getPrototypeOf(Derived),
-        result;
-
-    if (hasNativeReflectConstruct) {
-      var NewTarget = _getPrototypeOf(this).constructor;
-
-      result = Reflect.construct(Super, arguments, NewTarget);
-    } else {
-      result = Super.apply(this, arguments);
-    }
-
-    return _possibleConstructorReturn(this, result);
-  };
 }
 
 function _superPropBase(object, property) {
@@ -1145,7 +1113,9 @@ function _get(target, property, receiver) {
   return _get(target, property, receiver || target);
 }
 
-var Emitter = /*#__PURE__*/function () {
+var Emitter =
+/*#__PURE__*/
+function () {
   function Emitter() {
     _classCallCheck(this, Emitter);
 
@@ -1209,17 +1179,17 @@ var Emitter = /*#__PURE__*/function () {
   return Emitter;
 }();
 
-var AbortSignal = /*#__PURE__*/function (_Emitter) {
+var AbortSignal =
+/*#__PURE__*/
+function (_Emitter) {
   _inherits(AbortSignal, _Emitter);
-
-  var _super = _createSuper(AbortSignal);
 
   function AbortSignal() {
     var _this2;
 
     _classCallCheck(this, AbortSignal);
 
-    _this2 = _super.call(this); // Some versions of babel does not transpile super() correctly for IE <= 10, if the parent
+    _this2 = _possibleConstructorReturn(this, _getPrototypeOf(AbortSignal).call(this)); // Some versions of babel does not transpile super() correctly for IE <= 10, if the parent
     // constructor has failed to run, then "this.listeners" will still be undefined and then we call
     // the parent constructor directly instead as a workaround. For general details, see babel bug:
     // https://github.com/babel/babel/issues/3041
@@ -1267,7 +1237,9 @@ var AbortSignal = /*#__PURE__*/function (_Emitter) {
 
   return AbortSignal;
 }(Emitter);
-var AbortController = /*#__PURE__*/function () {
+var AbortController =
+/*#__PURE__*/
+function () {
   function AbortController() {
     _classCallCheck(this, AbortController);
 
