@@ -1,6 +1,6 @@
-import nodeFetch from 'node-fetch';
+import crossFetch from 'cross-fetch';
 
 export = (
     // istanbul ignore next
-    typeof window === 'undefined' ? (nodeFetch as typeof fetch) : fetch
+    typeof fetch === 'undefined' ? (crossFetch as typeof fetch) : fetch
 );
